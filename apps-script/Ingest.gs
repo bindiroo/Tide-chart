@@ -106,7 +106,7 @@ function installTrigger() {
 function debugInbox() {
   var sh = sheet_(CONFIG.TABS.LOG);
   var who = Session.getActiveUser().getEmail() || '(hidden — check which account opened Apps Script)';
-  sh.appendRow([new Date(), '===== debugInbox START — searching inbox of: ' + who + ' =====']);
+  sh.appendRow([new Date(), 'debugInbox START — searching inbox of: ' + who]);
   var hit = firstCsvBySubject_(CONFIG.SUBJECT, CONFIG.LOOKBACK_DAYS);
   sh.appendRow([new Date(), 'Configured SUBJECT="' + CONFIG.SUBJECT + '" SENDER="' +
     (CONFIG.SENDER || '(any)') + '" -> CSV found: ' + (hit ? hit.getName() : 'NO')]);
@@ -121,6 +121,6 @@ function debugInbox() {
         ' | subject: ' + msgs[m].getSubject() + ' | attachments: ' + names.join('  ||  ')]);
     }
   }
-  sh.appendRow([new Date(), '===== debugInbox END — read the rows above =====']);
+  sh.appendRow([new Date(), 'debugInbox END — read the rows above']);
   Logger.log('debugInbox done — open the Log tab.');
 }
