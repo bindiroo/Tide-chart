@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# netlify
+.netlify/
+
+# os / editor
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# local scratch data (live data comes from Apps Script, not git)
+public/data/*.local.json

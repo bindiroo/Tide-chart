@@ -1,0 +1,30 @@
+# ============================================================
+# Netlify configuration — Tide Chart (static, no build step, no functions)
+# ============================================================
+[build]
+  publish = "public"     # the static dashboard lives here
+  command = ""           # buildless vanilla JS
+
+# The data JSON is fetched from Apps Script at runtime (not from /data in prod),
+# but if you ever ship a snapshot under /data, keep it briefly cached.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300"
+
+# App code: always revalidate so new deploys show up immediately (no filename
+# hashing, so a long cache would serve stale JS/CSS after every push).
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

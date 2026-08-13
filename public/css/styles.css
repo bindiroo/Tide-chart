@@ -1,0 +1,113 @@
+/* ============================================================
+   Tide Chart — Jetty brand styles
+   Deep Sea #43575E · Atlantic #586D72 · Mid-tone #8FA8AE
+   Sage #5A7B6A · Sand #8B6F47 · Graphite #252933 · Cloud #F6F7F7
+   Fonts: Nunito (headings) · Inter (body) · "Draw Your Own Line."
+   ============================================================ */
+:root {
+  --deep-sea:#43575E; --atlantic:#586D72; --mid-tone:#8FA8AE;
+  --sage:#5A7B6A; --sand:#8B6F47; --graphite:#252933;
+  --cloud:#F6F7F7; --grey-sky:#EDECED;
+  --pos:#2f7d4f; --neg:#c0392b;
+  --card:#fff; --line:#EDECED;
+  --shadow:0 1px 3px rgba(37,41,51,.08),0 1px 2px rgba(37,41,51,.04);
+  --radius:10px;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; }
+body {
+  font-family:"Inter",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+  color:var(--graphite); background:var(--cloud); font-size:14px; line-height:1.45;
+}
+h1,h2,h3,h4 { font-family:"Nunito",system-ui,Arial,sans-serif; font-weight:800; margin:0; }
+button,input,select { font-family:inherit; }
+
+/* ---------- topbar ---------- */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--deep-sea); color:var(--cloud); padding:12px 20px;
+  position:sticky; top:0; z-index:20;
+}
+.topbar__brand { display:flex; align-items:baseline; gap:14px; }
+.topbar__mark { font-family:"Nunito"; font-weight:900; letter-spacing:1.5px; font-size:22px; color:#fff; }
+.topbar__tag { font-family:"Nunito"; font-weight:800; font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--mid-tone); border-left:1px solid rgba(246,247,247,.25); padding-left:14px; }
+.topbar__meta { display:flex; align-items:center; gap:14px; }
+.topbar__updated { font-size:12px; color:var(--mid-tone); }
+
+.btn { border:none; border-radius:7px; padding:7px 12px; font-weight:600; cursor:pointer; font-size:13px; }
+.btn--ghost { background:rgba(246,247,247,.12); color:var(--cloud); }
+.btn--ghost:hover { background:rgba(246,247,247,.22); }
+
+/* ---------- layout ---------- */
+.layout { display:grid; grid-template-columns:290px 1fr; align-items:start; }
+.rail {
+  position:sticky; top:57px; height:calc(100vh - 57px); overflow-y:auto;
+  background:#fff; border-right:1px solid var(--line); padding:16px 14px;
+}
+.main { padding:18px 22px 40px; min-width:0; }
+
+.rail__section { margin-bottom:18px; }
+.rail__label { font-family:"Nunito"; font-weight:800; font-size:11px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--atlantic); margin-bottom:8px; }
+.daterow { display:flex; align-items:center; gap:6px; }
+.daterow input { flex:1; min-width:0; padding:6px 7px; border:1px solid var(--line); border-radius:6px; font-size:12px; color:var(--graphite); }
+.daterow span { color:var(--mid-tone); }
+.hint { font-size:11px; color:var(--mid-tone); margin-top:5px; }
+
+/* ---------- filter groups ---------- */
+.fgroup { border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background:#fff; }
+.fgroup summary { list-style:none; cursor:pointer; display:flex; justify-content:space-between;
+  align-items:center; padding:9px 11px; font-weight:600; }
+.fgroup summary::-webkit-details-marker { display:none; }
+.fgroup__name { font-size:13px; }
+.fgroup__count { font-size:11px; color:var(--mid-tone); background:var(--cloud); border-radius:20px; padding:1px 9px; }
+.fgroup__count--on { color:#fff; background:var(--sage); }
+.fgroup__body { padding:0 11px 10px; }
+.fgroup__ctrls { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.fgroup__search { flex:1; min-width:0; padding:4px 7px; border:1px solid var(--line); border-radius:6px; font-size:12px; }
+.linkbtn { background:none; border:none; color:var(--atlantic); font-size:12px; font-weight:600; cursor:pointer; padding:0; }
+.linkbtn:hover { color:var(--deep-sea); text-decoration:underline; }
+.fgroup__list { max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:2px; }
+.chk { display:flex; align-items:center; gap:7px; font-size:12.5px; padding:2px 2px; cursor:pointer; }
+.chk:hover { background:var(--cloud); border-radius:4px; }
+.chk input { accent-color:var(--sage); }
+.chk span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---------- controls ---------- */
+.controls { display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-bottom:16px; }
+.ctl { display:flex; align-items:center; gap:9px; }
+.ctl--right { margin-left:auto; }
+.ctl__label { font-family:"Nunito"; font-weight:800; font-size:11px; letter-spacing:.05em;
+  text-transform:uppercase; color:var(--atlantic); }
+.status { font-size:12px; color:var(--atlantic); }
+.seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fff; }
+.seg__btn { border:none; background:#fff; padding:7px 14px; font-size:13px; font-weight:600; color:var(--atlantic); cursor:pointer; }
+.seg__btn + .seg__btn { border-left:1px solid var(--line); }
+.seg__btn--on { background:var(--deep-sea); color:#fff; }
+.select { padding:6px 9px; border:1px solid var(--line); border-radius:7px; font-size:13px; background:#fff; color:var(--graphite); }
+.inline { font-size:12px; color:var(--atlantic); display:inline-flex; align-items:center; }
+
+/* ---------- KPIs ---------- */
+.kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+.kpi { background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); }
+.kpi__val { font-family:"Nunito"; font-weight:900; font-size:26px; color:var(--deep-sea); line-height:1.1; }
+.kpi__lbl { font-size:11.5px; color:var(--atlantic); margin-top:4px; text-transform:uppercase; letter-spacing:.04em; }
+
+/* ---------- cards ---------- */
+.card { background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:18px; }
+.card__head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.card__head h3 { font-size:15px; color:var(--graphite); }
+.card__sub { font-size:12px; color:var(--mid-tone); }
+.chartbox { position:relative; height:300px; }
+.chartbox--tall { height:420px; }
+.projnote { margin-top:12px; font-size:13px; color:var(--atlantic); border-top:1px solid var(--line); padding-top:10px; }
+.pos { color:var(--pos); } .neg { color:var(--neg); }
+.foot { text-align:center; font-size:11.5px; color:var(--mid-tone); margin-top:24px; }
+
+/* ---------- responsive ---------- */
+@media (max-width:900px) {
+  .layout { grid-template-columns:1fr; }
+  .rail { position:static; height:auto; border-right:none; border-bottom:1px solid var(--line); }
+  .kpis { grid-template-columns:repeat(2,1fr); }
+}

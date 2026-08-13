@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tide Chart — Jetty Product Trends</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="topbar__mark">TIDE CHART</span>
+      <span class="topbar__tag">Product · Seasonality · Trends</span>
+    </div>
+    <div class="topbar__meta">
+      <span id="updated" class="topbar__updated">loading…</span>
+      <button id="resetBtn" class="btn btn--ghost">Reset filters</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ---------------- filter rail ---------------- -->
+    <aside class="rail">
+      <div class="rail__section">
+        <div class="rail__label">Date placed (order)</div>
+        <div class="daterow">
+          <input type="date" id="oFrom" /> <span>→</span> <input type="date" id="oTo" />
+        </div>
+        <div class="hint" id="oHint"></div>
+      </div>
+      <div class="rail__section">
+        <div class="rail__label">Ship date</div>
+        <div class="daterow">
+          <input type="date" id="sFrom" /> <span>→</span> <input type="date" id="sTo" />
+        </div>
+        <div class="hint" id="sHint"></div>
+      </div>
+      <div class="rail__section">
+        <div class="rail__label">Filters</div>
+        <div id="filters"></div>
+      </div>
+    </aside>
+
+    <!-- ---------------- main ---------------- -->
+    <main class="main">
+      <!-- control bar -->
+      <div class="controls">
+        <div class="ctl">
+          <span class="ctl__label">Metric</span>
+          <div class="seg" id="metricToggle">
+            <button class="seg__btn seg__btn--on" data-val="amt">Dollars</button>
+            <button class="seg__btn" data-val="qty">Units</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <span class="ctl__label">Trend basis</span>
+          <div class="seg" id="basisToggle">
+            <button class="seg__btn seg__btn--on" data-val="order">Order date</button>
+            <button class="seg__btn" data-val="ship">Ship date</button>
+          </div>
+        </div>
+        <div class="ctl ctl--right"><span id="status" class="status"></span></div>
+      </div>
+
+      <!-- KPIs -->
+      <section class="kpis">
+        <div class="kpi"><div class="kpi__val" id="kpiAmt">—</div><div class="kpi__lbl">Booked $ (less cxl)</div></div>
+        <div class="kpi"><div class="kpi__val" id="kpiQty">—</div><div class="kpi__lbl">Units (less cxl)</div></div>
+        <div class="kpi"><div class="kpi__val" id="kpiLines">—</div><div class="kpi__lbl">Order lines</div></div>
+        <div class="kpi"><div class="kpi__val" id="kpiAov">—</div><div class="kpi__lbl">Avg $ / unit</div></div>
+      </section>
+
+      <!-- breakdown -->
+      <section class="card">
+        <div class="card__head">
+          <h3 id="breakdownTitle">By Collection</h3>
+          <label class="inline">breakdown&nbsp;
+            <select id="breakdownDim" class="select"></select>
+          </label>
+        </div>
+        <div class="chartbox chartbox--tall"><canvas id="chart-breakdown"></canvas></div>
+      </section>
+
+      <!-- seasonality: week-of-year YoY -->
+      <section class="card">
+        <div class="card__head">
+          <h3>Seasonality — week of year, by year</h3>
+          <span class="card__sub">Weeks 1–53, one line per year · reveals the ebb &amp; flow</span>
+        </div>
+        <div class="chartbox"><canvas id="chart-woy"></canvas></div>
+      </section>
+
+      <!-- linear timeline -->
+      <section class="card">
+        <div class="card__head">
+          <h3>Timeline — continuous weekly flow</h3>
+          <span class="card__sub">Actual calendar order · gaps and peaks in sequence</span>
+        </div>
+        <div class="chartbox"><canvas id="chart-linear"></canvas></div>
+      </section>
+
+      <!-- projection -->
+      <section class="card" id="projBox">
+        <div class="card__head">
+          <h3>Projection — year-over-year pace</h3>
+          <label class="inline">target year&nbsp;
+            <select id="projYear" class="select"></select>
+          </label>
+        </div>
+        <div class="chartbox"><canvas id="chart-proj"></canvas></div>
+        <div class="projnote" id="projNote"></div>
+      </section>
+
+      <footer class="foot">Tide Chart · Jetty · booked dollars &amp; units net of cancellations · “Draw Your Own Line.”</footer>
+    </main>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
