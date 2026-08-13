@@ -3,10 +3,10 @@
 // ============================================================
 export const CONFIG = {
   // -------- DATA SOURCE --------
-  // Local sample works out of the box. In production set this to the Apps Script
-  // Web App URL, e.g. "https://script.google.com/macros/s/XXXX/exec?key=YOUR_READ_KEY".
-  // Runtime override: ?data=<url> in the address bar.
-  DATA_URL: "data/tide-data.json",
+  // LIVE: the Apps Script web app feed (?key= matches READ_KEY in Script Properties).
+  DATA_URL: "https://script.google.com/macros/s/AKfycbzzbhDpJi7pYS5RiV7n1G5oHI32q8qEEH5_P7o_h5pf_denj-NoJ90oHccUuPHOkPhq/exec?key=tide-chart-2003",
+  // Local preview fallback (swap in for offline work): "data/tide-data.json"
+  // Runtime override for testing: add ?data=<url> to the address bar.
 
   // Cache the fetched dataset in localStorage for this many minutes.
   CACHE_MINUTES: 30,
