@@ -17,3 +17,6 @@ node_modules/
 
 # local scratch data (live data comes from Apps Script, not git)
 public/data/*.local.json
+
+# claude local settings
+.claude/settings.local.json
