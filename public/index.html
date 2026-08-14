@@ -93,7 +93,11 @@
         <div class="card__head">
           <h3>Style ranking</h3>
           <div class="rank__controls">
-            <input id="rankSearch" class="rank__search" type="search" placeholder="Search style… e.g. Garwood" />
+            <div class="seg seg--sm" id="rankLevel">
+              <button class="seg__btn seg__btn--on" data-val="style">By style</button>
+              <button class="seg__btn" data-val="sku">By SKU / color</button>
+            </div>
+            <input id="rankSearch" class="rank__search" type="search" placeholder="Search style, SKU or color…" />
             <label class="inline">color by&nbsp;
               <select id="rankColorDim" class="select"></select>
             </label>
@@ -103,19 +107,7 @@
         <div class="rank__legend" id="rankLegend"></div>
         <div class="tablewrap">
           <table class="rank" id="rankTable">
-            <thead>
-              <tr>
-                <th class="rank__num">#</th>
-                <th data-sort="name" class="rank__l">Style<span class="arrow"></span></th>
-                <th data-sort="collection" class="rank__l">Collection<span class="arrow"></span></th>
-                <th data-sort="category" class="rank__l">Category<span class="arrow"></span></th>
-                <th data-sort="subcategory" class="rank__l">Subcat<span class="arrow"></span></th>
-                <th data-sort="colors">Colors<span class="arrow"></span></th>
-                <th data-sort="qty">Units<span class="arrow"></span></th>
-                <th data-sort="amt">Dollars<span class="arrow"></span></th>
-                <th class="rank__act"></th>
-              </tr>
-            </thead>
+            <thead><tr id="rankHead"></tr></thead>
             <tbody id="rankBody"></tbody>
           </table>
         </div>

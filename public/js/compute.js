@@ -157,6 +157,71 @@ export function rankStyles(data, rows) {
   return out;
 }
 
+/** Group filtered rows by SKU (style code) — the finest level. */
+export function rankSkus(data, rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const sk = r[I.style];
+    let a = map.get(sk);
+    if (!a) {
+      a = { styleIdx: sk, nameIdx: r[I.name], colorIdx: r[I.color], seasonIdx: r[I.season],
+            catIdx: r[I.category], collIdx: r[I.collection], subIdx: r[I.subcategory],
+            divIdx: r[I.division], qty: 0, amt: 0 };
+      map.set(sk, a);
+    }
+    a.qty += r[I.qty]; a.amt += r[I.amt];
+  }
+  const out = [];
+  for (const a of map.values()) out.push({
+    sku: data.dims.style[a.styleIdx] || "",
+    name: data.dims.name[a.nameIdx] || "",
+    color: data.dims.color[a.colorIdx] || "(none)",
+    season: data.dims.season[a.seasonIdx] || "",
+    category: data.dims.category[a.catIdx] || "",
+    collection: data.dims.collection[a.collIdx] || "",
+    subcategory: data.dims.subcategory[a.subIdx] || "",
+    division: data.dims.division[a.divIdx] || "",
+    qty: a.qty, amt: a.amt,
+    nameIdx: a.nameIdx,
+    dom: { collection: a.collIdx, category: a.catIdx, division: a.divIdx, subcategory: a.subIdx, name: a.nameIdx },
+    present: { collection: [a.collIdx], category: [a.catIdx], subcategory: [a.subIdx], division: [a.divIdx] },
+  });
+  return out;
+}
+
+/** Colors within one style (for the expandable drill-down), from filtered rows. */
+export function styleColors(data, rows, nameIdx) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r[I.name] !== nameIdx) continue;
+    const ck = r[I.color];
+    let a = map.get(ck);
+    if (!a) { a = { colorIdx: ck, qty: 0, amt: 0, skus: new Set(), seasons: new Set() }; map.set(ck, a); }
+    a.qty += r[I.qty]; a.amt += r[I.amt]; a.skus.add(r[I.style]); a.seasons.add(r[I.season]);
+  }
+  const out = [];
+  for (const a of map.values())
+    out.push({ color: data.dims.color[a.colorIdx] || "(none)", qty: a.qty, amt: a.amt,
+               skus: a.skus.size, seasons: a.seasons.size });
+  return out;
+}
+
+/** Season-by-season totals for one style (projection signal), from filtered rows. */
+export function styleSeasons(data, rows, nameIdx) {
+  const map = new Map();
+  for (const r of rows) {
+    if (r[I.name] !== nameIdx) continue;
+    const sk = r[I.season];
+    let a = map.get(sk);
+    if (!a) { a = { seasonIdx: sk, qty: 0, amt: 0 }; map.set(sk, a); }
+    a.qty += r[I.qty]; a.amt += r[I.amt];
+  }
+  const out = [];
+  for (const a of map.values())
+    out.push({ season: data.dims.season[a.seasonIdx] || "", qty: a.qty, amt: a.amt });
+  return out;
+}
+
 /**
  * Simple YoY seasonal projection for a target year: for each week, take the
  * prior year's same-week value and scale by the blended growth rate observed in

@@ -4,7 +4,8 @@
 import { CONFIG } from "./config.js";
 import { loadData } from "./data.js";
 import { fmtMoney, fmtNum, fmtMoneyShort, ymdToInput, inputToYmd, ymdToDisplay } from "./format.js";
-import { filterRows, kpis, breakdownBy, weekOfYear, linearWeeks, projectYoY, rankStyles } from "./compute.js";
+import { filterRows, kpis, breakdownBy, weekOfYear, linearWeeks, projectYoY,
+         rankStyles, rankSkus, styleColors, styleSeasons } from "./compute.js";
 import { renderBreakdown, renderWeekOfYear, renderLinear, renderProjection } from "./charts.js";
 
 // palette for the ranking color-code (brand tones + high-contrast, ~20 distinct)
@@ -20,8 +21,10 @@ const state = {
   shipRange: { from: 0, to: 0 },
   linearYears: null,            // Set(year) or null = all
   projYear: null,               // target year for projection
-  rank: { sortKey: "amt", dir: -1, colorDim: "collection", search: "" },
+  rank: { level: "style", sortKey: "amt", dir: -1, colorDim: "collection",
+          search: "", expanded: new Set() },
 };
+let curRows = [];   // last filtered row set (for drill-down expansion)
 CONFIG.FILTER_DIMS.forEach((d) => (state.filters[d.key] = new Set()));
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -179,6 +182,33 @@ function buildProjectionYears() {
 }
 
 // ---------- style ranking table ----------
+// Column schemas per grouping level. sort:<key> makes the header clickable.
+const RANK_COLS = {
+  style: [
+    { key: "#", label: "#", cls: "rank__num" },
+    { key: "name", label: "Style", sort: "name", cls: "rank__l", alpha: true, main: true },
+    { key: "collection", label: "Collection", sort: "collection", cls: "rank__l", alpha: true },
+    { key: "category", label: "Category", sort: "category", cls: "rank__l", alpha: true },
+    { key: "subcategory", label: "Subcat", sort: "subcategory", cls: "rank__l", alpha: true },
+    { key: "colors", label: "Colors", sort: "colors" },
+    { key: "qty", label: "Units", sort: "qty" },
+    { key: "amt", label: "Dollars", sort: "amt" },
+    { key: "act", label: "", cls: "rank__act" },
+  ],
+  sku: [
+    { key: "#", label: "#", cls: "rank__num" },
+    { key: "sku", label: "SKU", sort: "sku", cls: "rank__l", alpha: true, main: true },
+    { key: "name", label: "Style", sort: "name", cls: "rank__l", alpha: true },
+    { key: "color", label: "Color", sort: "color", cls: "rank__l", alpha: true },
+    { key: "season", label: "Season", sort: "season", cls: "rank__l", alpha: true },
+    { key: "category", label: "Category", sort: "category", cls: "rank__l", alpha: true },
+    { key: "qty", label: "Units", sort: "qty" },
+    { key: "amt", label: "Dollars", sort: "amt" },
+    { key: "act", label: "", cls: "rank__act" },
+  ],
+};
+const ALPHA_KEYS = new Set(["name", "collection", "category", "subcategory", "sku", "color", "season"]);
+
 function buildRankControls() {
   // Older data feeds (before name/style were added) can't power this table.
   if (!DATA.meta.fields || DATA.meta.fields.indexOf("name") === -1) {
@@ -190,6 +220,15 @@ function buildRankControls() {
   sel.value = state.rank.colorDim;
   sel.addEventListener("change", () => { state.rank.colorDim = sel.value; render(); });
 
+  bindToggle("#rankLevel", "_rankLevel", () => {
+    state.rank.level = state["_rankLevel"];
+    state.rank.expanded.clear();
+    if (!RANK_COLS[state.rank.level].some((c) => c.sort === state.rank.sortKey))
+      state.rank.sortKey = "amt";
+    buildRankHead();
+    render();
+  });
+
   const search = $("#rankSearch");
   let t = null;
   search.addEventListener("input", () => {
@@ -197,111 +236,168 @@ function buildRankControls() {
     t = setTimeout(() => { state.rank.search = search.value.trim().toLowerCase(); render(); }, 120);
   });
 
-  // click a column header to sort; click again to flip direction
-  document.querySelectorAll("#rankTable thead th[data-sort]").forEach((th) => {
-    th.addEventListener("click", () => {
-      const key = th.dataset.sort;
-      const r = state.rank;
-      if (r.sortKey === key) r.dir = -r.dir;
-      else { r.sortKey = key; r.dir = (key === "name" || key === "collection" ||
-             key === "category" || key === "subcategory") ? 1 : -1; }
-      render();
-    });
+  buildRankHead();
+}
+
+/** (Re)build the table header for the current grouping level + wire sort clicks. */
+function buildRankHead() {
+  const head = $("#rankHead");
+  head.innerHTML = "";
+  RANK_COLS[state.rank.level].forEach((c) => {
+    const th = document.createElement("th");
+    th.className = c.cls || "";
+    th.innerHTML = esc(c.label) + (c.sort ? '<span class="arrow"></span>' : "");
+    if (c.sort) {
+      th.dataset.sort = c.sort;
+      th.addEventListener("click", () => {
+        const r = state.rank;
+        if (r.sortKey === c.sort) r.dir = -r.dir;
+        else { r.sortKey = c.sort; r.dir = ALPHA_KEYS.has(c.sort) ? 1 : -1; }
+        render();
+      });
+    }
+    head.append(th);
   });
 }
 
 function renderTable(rows) {
   if (DATA.meta.fields.indexOf("name") === -1) return;   // table hidden on old feeds
   const r = state.rank;
-  let items = rankStyles(DATA, rows);
+  const bySku = r.level === "sku";
+  let items = bySku ? rankSkus(DATA, rows) : rankStyles(DATA, rows);
 
-  // search filter (style name or any dominant attribute)
+  // search (name / attributes; plus sku + color in SKU mode)
   if (r.search) {
+    const q = r.search;
     items = items.filter((x) =>
-      x.name.toLowerCase().includes(r.search) ||
-      x.collection.toLowerCase().includes(r.search) ||
-      x.category.toLowerCase().includes(r.search) ||
-      x.subcategory.toLowerCase().includes(r.search));
+      (x.name && x.name.toLowerCase().includes(q)) ||
+      (x.collection && x.collection.toLowerCase().includes(q)) ||
+      (x.category && x.category.toLowerCase().includes(q)) ||
+      (x.subcategory && x.subcategory.toLowerCase().includes(q)) ||
+      (x.sku && x.sku.toLowerCase().includes(q)) ||
+      (x.color && x.color.toLowerCase().includes(q)) ||
+      (x.season && x.season.toLowerCase().includes(q)));
   }
   const totalMatches = items.length;
 
   // sort
   const key = r.sortKey, dir = r.dir;
-  const cmp = (key === "name" || key === "collection" || key === "category" || key === "subcategory")
-    ? (a, b) => String(a[key]).localeCompare(String(b[key])) * dir
+  const cmp = ALPHA_KEYS.has(key)
+    ? (a, b) => String(a[key] || "").localeCompare(String(b[key] || "")) * dir
     : (a, b) => (a[key] - b[key]) * dir;
   items.sort(cmp);
 
   // header arrows
   document.querySelectorAll("#rankTable thead th[data-sort]").forEach((th) => {
-    const a = th.querySelector(".arrow");
-    a.textContent = th.dataset.sort === key ? (dir < 0 ? "▼" : "▲") : "";
+    th.querySelector(".arrow").textContent = th.dataset.sort === key ? (dir < 0 ? "▼" : "▲") : "";
   });
 
-  // color-code: rank distinct values of the chosen dim by total dollars, map to palette
+  // color-code: rank distinct values of the chosen dim by total $, map to palette
   const cd = r.colorDim;
+  const keyOf = (x) => (cd === "name" ? x.nameIdx : x.dom[cd]);
   const weight = new Map();
-  for (const x of items) {
-    const kk = cd === "name" ? x.nameIdx : x.dom[cd];
-    weight.set(kk, (weight.get(kk) || 0) + x.amt);
-  }
+  for (const x of items) weight.set(keyOf(x), (weight.get(keyOf(x)) || 0) + x.amt);
   const orderKeys = [...weight.keys()].sort((a, b) => weight.get(b) - weight.get(a));
   const colorPos = new Map(orderKeys.map((k, i) => [k, i]));
-  const colorFor = (x) => {
-    const kk = cd === "name" ? x.nameIdx : x.dom[cd];
-    return RANK_PALETTE[colorPos.get(kk) % RANK_PALETTE.length];
-  };
+  const colorFor = (x) => RANK_PALETTE[colorPos.get(keyOf(x)) % RANK_PALETTE.length];
 
-  // legend (skip for style-name — too many)
+  // legend
   const legend = $("#rankLegend");
   legend.innerHTML = "";
   if (cd !== "name") {
-    const labelFor = (k) => DATA.dims[cd][k] || "(blank)";
     orderKeys.slice(0, 16).forEach((k) => {
-      const el2 = el("span", "lg");
+      const lg = el("span", "lg");
       const sw = el("span", "sw"); sw.style.background = RANK_PALETTE[colorPos.get(k) % RANK_PALETTE.length];
-      el2.append(sw, document.createTextNode(labelFor(k)));
-      legend.append(el2);
+      lg.append(sw, document.createTextNode(DATA.dims[cd][k] || "(blank)"));
+      legend.append(lg);
     });
     if (orderKeys.length > 16) legend.append(el("span", "lg", `+${orderKeys.length - 16} more`));
   } else {
     legend.append(el("span", "lg", "each style shown in its own color"));
   }
 
-  // body (cap render for performance; sort already put the important ones on top)
-  const CAP = 250;
+  // body
+  const CAP = 300;
   const shown = items.slice(0, CAP);
-  const metric = state.metric;
   const body = $("#rankBody");
   body.innerHTML = "";
   const frag = document.createDocumentFragment();
+  const nCols = RANK_COLS[r.level].length;
   shown.forEach((x, i) => {
     const tr = document.createElement("tr");
-    const nameCell = `<td class="rank__l"><div class="rank__name"><span class="sw" style="background:${colorFor(x)}"></span><span title="${esc(x.name)}">${esc(x.name)}</span></div></td>`;
-    tr.innerHTML =
-      `<td class="rank__num">${i + 1}</td>` +
-      nameCell +
-      `<td class="rank__l">${esc(x.collection)}</td>` +
-      `<td class="rank__l">${esc(x.category)}</td>` +
-      `<td class="rank__l">${esc(x.subcategory)}</td>` +
-      `<td class="rank__val">${fmtNum(x.colors)}</td>` +
-      `<td class="rank__val">${fmtNum(x.qty)}</td>` +
-      `<td class="rank__val">${fmtMoney(x.amt)}</td>` +
-      `<td class="rank__act"><button class="rank__pivotbtn" title="Filter the whole dashboard to this style's Collection / Category / Subcategory / Division">→</button></td>`;
-    tr.querySelector(".rank__pivotbtn").addEventListener("click", () => pivotToStyle(x));
+    if (bySku) {
+      tr.innerHTML =
+        `<td class="rank__num">${i + 1}</td>` +
+        `<td class="rank__l"><div class="rank__name"><span class="sw" style="background:${colorFor(x)}"></span><span title="${esc(x.sku)}">${esc(x.sku)}</span></div></td>` +
+        `<td class="rank__l">${esc(x.name)}</td>` +
+        `<td class="rank__l">${esc(x.color)}</td>` +
+        `<td class="rank__l">${esc(x.season)}</td>` +
+        `<td class="rank__l">${esc(x.category)}</td>` +
+        `<td class="rank__val">${fmtNum(x.qty)}</td>` +
+        `<td class="rank__val">${fmtMoney(x.amt)}</td>` +
+        `<td class="rank__act"><button class="rank__pivotbtn" title="Filter the dashboard to this style">→</button></td>`;
+      tr.querySelector(".rank__pivotbtn").addEventListener("click", () => pivotToStyle(x));
+    } else {
+      const open = r.expanded.has(x.nameIdx);
+      tr.innerHTML =
+        `<td class="rank__num">${i + 1}</td>` +
+        `<td class="rank__l"><div class="rank__name"><span class="caret">${open ? "▾" : "▸"}</span><span class="sw" style="background:${colorFor(x)}"></span><span class="rank__lnk" title="Click to see colors of ${esc(x.name)}">${esc(x.name)}</span></div></td>` +
+        `<td class="rank__l">${esc(x.collection)}</td>` +
+        `<td class="rank__l">${esc(x.category)}</td>` +
+        `<td class="rank__l">${esc(x.subcategory)}</td>` +
+        `<td class="rank__val">${fmtNum(x.colors)}</td>` +
+        `<td class="rank__val">${fmtNum(x.qty)}</td>` +
+        `<td class="rank__val">${fmtMoney(x.amt)}</td>` +
+        `<td class="rank__act"><button class="rank__pivotbtn" title="Filter the whole dashboard to this style's Collection / Category / Subcategory / Division">→</button></td>`;
+      tr.querySelector(".rank__lnk").addEventListener("click", () => toggleExpand(x.nameIdx));
+      tr.querySelector(".caret").addEventListener("click", () => toggleExpand(x.nameIdx));
+      tr.querySelector(".rank__pivotbtn").addEventListener("click", () => pivotToStyle(x));
+      frag.append(tr);
+      if (open) frag.append(...expandRows(x, nCols));
+      return;
+    }
     frag.append(tr);
   });
   body.append(frag);
 
+  const noun = bySku ? "SKUs" : "styles";
   $("#rankFoot").textContent =
-    `${fmtNum(totalMatches)} styles${r.search ? ` matching “${r.search}”` : ""}` +
-    (totalMatches > CAP ? ` · showing top ${CAP} by ${key === "qty" ? "the current sort" : "the current sort"}` : "") +
-    ` · sorted by ${sortLabel(key)} ${dir < 0 ? "↓" : "↑"}`;
+    `${fmtNum(totalMatches)} ${noun}${r.search ? ` matching “${r.search}”` : ""}` +
+    (totalMatches > CAP ? ` · showing top ${CAP}` : "") +
+    ` · sorted by ${sortLabel(key)} ${dir < 0 ? "↓" : "↑"}` +
+    (bySku ? "" : " · click a style name to see its colors");
+}
+
+/** Build the indented color sub-rows shown when a style is expanded. */
+function expandRows(x, nCols) {
+  const metricKey = state.metric === "qty" ? "qty" : "amt";
+  const colors = styleColors(DATA, curRows, x.nameIdx).sort((a, b) => b[metricKey] - a[metricKey]);
+  const total = x[metricKey] || 1;
+  return colors.map((c) => {
+    const tr = document.createElement("tr");
+    tr.className = "rank__sub";
+    const share = ((c[metricKey] / total) * 100).toFixed(0);
+    tr.innerHTML =
+      `<td></td>` +
+      `<td class="rank__l" colspan="4"><span class="rank__subname">${esc(c.color)}</span>` +
+      `<span class="rank__submeta">${c.skus} SKU${c.skus > 1 ? "s" : ""}${c.seasons > 1 ? ` · ${c.seasons} seasons` : ""}</span></td>` +
+      `<td class="rank__val">${share}%</td>` +
+      `<td class="rank__val">${fmtNum(c.qty)}</td>` +
+      `<td class="rank__val">${fmtMoney(c.amt)}</td>` +
+      `<td></td>`;
+    return tr;
+  });
+}
+
+function toggleExpand(nameIdx) {
+  const e = state.rank.expanded;
+  if (e.has(nameIdx)) e.delete(nameIdx); else e.add(nameIdx);
+  render();
 }
 
 function sortLabel(k) {
-  return { name: "style", collection: "collection", category: "category",
-    subcategory: "subcategory", colors: "colors", qty: "units", amt: "dollars" }[k] || k;
+  return { name: "style", collection: "collection", category: "category", subcategory: "subcategory",
+    colors: "colors", qty: "units", amt: "dollars", sku: "SKU", color: "color", season: "season" }[k] || k;
 }
 
 /** Apply a style's attribute values to the global filters (the "related filters" pivot). */
@@ -343,6 +439,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // ---------- render ----------
 function render() {
   const rows = filterRows(DATA, state);
+  curRows = rows;                       // for ranking drill-down expansion
   const k = kpis(rows);
   $("#kpiAmt").textContent = fmtMoney(k.amt);
   $("#kpiQty").textContent = fmtNum(k.qty);

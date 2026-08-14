@@ -141,6 +141,14 @@ table.rank tbody tr:hover { background:var(--cloud); }
 .rank__pivotbtn:hover { border-color:var(--deep-sea); color:var(--deep-sea); }
 .rank__foot { font-size:11.5px; color:var(--mid-tone); margin-top:10px; }
 .linkbtn.strong { font-weight:700; color:var(--deep-sea); }
+.seg--sm .seg__btn { padding:5px 10px; font-size:12px; }
+.rank__name .caret { color:var(--mid-tone); width:12px; flex:none; cursor:pointer; font-size:11px; }
+.rank__lnk { cursor:pointer; }
+.rank__lnk:hover { color:var(--deep-sea); text-decoration:underline; }
+tr.rank__sub { background:var(--cloud); }
+tr.rank__sub td { border-bottom:1px solid #fff; color:var(--atlantic); }
+.rank__subname { font-weight:600; margin-left:22px; }
+.rank__submeta { color:var(--mid-tone); font-size:11px; margin-left:10px; }
 
 /* ---------- responsive ---------- */
 @media (max-width:900px) {
