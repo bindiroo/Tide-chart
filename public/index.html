@@ -144,6 +144,36 @@
         <div class="projnote" id="projNote"></div>
       </section>
 
+      <!-- booking pace vs prior seasons -->
+      <section class="card">
+        <div class="card__head">
+          <h3>Booking pace — by season</h3>
+          <span class="card__sub">Cumulative, aligned to each season's first order · is this season ahead of last?</span>
+        </div>
+        <div class="chartbox"><canvas id="chart-pace"></canvas></div>
+      </section>
+
+      <!-- source mix by season -->
+      <section class="card">
+        <div class="card__head">
+          <h3>Source mix — by season</h3>
+          <span class="card__sub">PRE-BOOK vs AO vs Post Deadline · how each season is built</span>
+        </div>
+        <div class="chartbox"><canvas id="chart-source"></canvas></div>
+      </section>
+
+      <!-- season heatmap matrix -->
+      <section class="card">
+        <div class="card__head">
+          <h3>Season heatmap</h3>
+          <label class="inline">rows&nbsp;
+            <select id="heatDim" class="select"></select>
+          </label>
+        </div>
+        <div class="tablewrap"><div id="heatmap" class="heatmap"></div></div>
+        <div class="rank__foot" id="heatFoot"></div>
+      </section>
+
       <footer class="foot">Tide Chart · Jetty · booked dollars &amp; units net of cancellations · “Draw Your Own Line.”</footer>
     </main>
   </div>

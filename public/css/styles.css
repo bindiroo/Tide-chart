@@ -150,6 +150,30 @@ tr.rank__sub td { border-bottom:1px solid #fff; color:var(--atlantic); }
 .rank__subname { font-weight:600; margin-left:22px; }
 .rank__submeta { color:var(--mid-tone); font-size:11px; margin-left:10px; }
 
+/* drill-down panel (season trend + colors) */
+tr.rank__panel > td { background:var(--cloud); padding:14px 16px; }
+.dd { display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+@media (max-width:760px){ .dd { grid-template-columns:1fr; } }
+.dd__h { font-family:"Nunito"; font-weight:800; font-size:11px; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--atlantic); margin-bottom:8px; }
+.dd__empty { font-size:12px; color:var(--mid-tone); }
+.dd__bar { display:grid; grid-template-columns:120px 1fr auto auto; align-items:center; gap:9px; margin-bottom:4px; font-size:12px; }
+.dd__lab { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--graphite); }
+.dd__track { background:#e4e7e7; border-radius:4px; height:12px; overflow:hidden; }
+.dd__fill { display:block; height:100%; background:var(--deep-sea); border-radius:4px; }
+.dd__fill--sand { background:var(--sand); }
+.dd__val { font-variant-numeric:tabular-nums; color:var(--graphite); min-width:66px; text-align:right; }
+.dd__chg { min-width:52px; text-align:right; font-size:11px; color:var(--mid-tone); }
+
+/* season heatmap */
+.heatmap table.heat { border-collapse:separate; border-spacing:2px; font-size:11.5px; }
+table.heat th { font-family:"Nunito"; font-weight:800; font-size:10.5px; letter-spacing:.02em; text-transform:uppercase;
+  color:var(--atlantic); padding:4px 6px; text-align:center; white-space:nowrap; }
+table.heat th.heat__row, table.heat td.heat__row { text-align:left; }
+table.heat td { padding:6px 8px; text-align:right; border-radius:4px; font-variant-numeric:tabular-nums; min-width:52px; }
+table.heat td.heat__row { background:transparent; color:var(--graphite); font-weight:600; max-width:190px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
 /* ---------- responsive ---------- */
 @media (max-width:900px) {
   .layout { grid-template-columns:1fr; }

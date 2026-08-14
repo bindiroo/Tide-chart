@@ -222,6 +222,97 @@ export function styleSeasons(data, rows, nameIdx) {
   return out;
 }
 
+// Chronological ordering for "SUMMER 2024" style order-seasons.
+const SEASON_RANK = { SPRING: 1, SUMMER: 2, FALL: 3, WINTER: 4, HOLIDAY: 5 };
+export function seasonSortKey(label) {
+  const m = /([A-Z]+)\s*(\d{4})/.exec(String(label).toUpperCase());
+  if (!m) return [9999, 9];
+  return [parseInt(m[2], 10), SEASON_RANK[m[1]] || 8];
+}
+function cmpSeasonLabel(a, b) {
+  const ka = seasonSortKey(a), kb = seasonSortKey(b);
+  return ka[0] - kb[0] || ka[1] - kb[1] || String(a).localeCompare(String(b));
+}
+
+/** Present source value-indices in stable dim order. */
+function presentSourceIdx(data, rows) {
+  const seen = new Set();
+  for (const r of rows) seen.add(r[I.source]);
+  return data.dims.source.map((_, i) => i).filter((i) => seen.has(i));
+}
+
+/** Matrix: chosen row dimension × season, color-scaled. Top-N rows by total. */
+export function seasonMatrix(data, rows, rowDimKey, metric, topN = 20) {
+  const rIdx = I[rowDimKey], sIdx = I.season;
+  const rowMap = new Map(); const seasonSet = new Set();
+  for (const r of rows) {
+    const rv = r[rIdx], sv = r[sIdx]; seasonSet.add(sv);
+    let a = rowMap.get(rv); if (!a) { a = { total: 0, by: new Map() }; rowMap.set(rv, a); }
+    const v = val(r, metric); a.total += v; a.by.set(sv, (a.by.get(sv) || 0) + v);
+  }
+  const seasons = [...seasonSet].map((si) => ({ si, label: data.dims.season[si] || "(blank)" }))
+    .sort((a, b) => cmpSeasonLabel(a.label, b.label));
+  const rowArr = [...rowMap.entries()]
+    .map(([rv, a]) => ({ label: data.dims[rowDimKey][rv] || "(blank)", total: a.total, by: a.by }))
+    .sort((a, b) => b.total - a.total).slice(0, topN);
+  let max = 0;
+  const cells = rowArr.map((row) => seasons.map((s) => {
+    const v = row.by.get(s.si) || 0; if (v > max) max = v; return v;
+  }));
+  return { rowLabels: rowArr.map((r) => r.label), rowTotals: rowArr.map((r) => r.total),
+           seasons: seasons.map((s) => s.label), cells, max, truncated: rowMap.size > topN, totalRows: rowMap.size };
+}
+
+/** Source (PRE-BOOK/AO/…) composition per season. */
+export function sourceBySeason(data, rows, metric) {
+  const sIdx = I.season, srcIdx = I.source;
+  const seasonSet = new Set(); const map = new Map();  // season -> Map(srcIdx->v)
+  for (const r of rows) {
+    const sv = r[sIdx]; seasonSet.add(sv);
+    let a = map.get(sv); if (!a) { a = new Map(); map.set(sv, a); }
+    a.set(r[srcIdx], (a.get(r[srcIdx]) || 0) + val(r, metric));
+  }
+  const seasons = [...seasonSet].map((si) => ({ si, label: data.dims.season[si] || "(blank)" }))
+    .sort((a, b) => cmpSeasonLabel(a.label, b.label));
+  const srcIdxs = presentSourceIdx(data, rows);
+  return {
+    seasons: seasons.map((s) => s.label),
+    bySource: srcIdxs.map((si) => ({
+      label: data.dims.source[si] || "(blank)",
+      data: seasons.map((s) => (map.get(s.si) && map.get(s.si).get(si)) || 0),
+    })),
+  };
+}
+
+/** Booking pace: cumulative metric aligned by weeks-since-first-order, per season. */
+export function seasonPace(data, rows, metric) {
+  const daysOf = (ymd) => {
+    const y = Math.floor(ymd / 10000), m = Math.floor(ymd / 100) % 100, d = ymd % 100;
+    return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+  };
+  const bySeason = new Map();
+  for (const r of rows) {
+    const od = r[I.oDate]; if (!od) continue;
+    const sv = r[I.season];
+    let a = bySeason.get(sv); if (!a) { a = []; bySeason.set(sv, a); }
+    a.push([daysOf(od), val(r, metric)]);
+  }
+  const seasons = [...bySeason.keys()].map((si) => ({ si, label: data.dims.season[si] || "(blank)" }))
+    .sort((a, b) => cmpSeasonLabel(a.label, b.label));
+  let maxWeek = 0; const series = {};
+  for (const s of seasons) {
+    const arr = bySeason.get(s.si);
+    let minDay = Infinity; for (const x of arr) if (x[0] < minDay) minDay = x[0];
+    const weekly = [];
+    for (const [day, v] of arr) { const w = Math.floor((day - minDay) / 7); weekly[w] = (weekly[w] || 0) + v; }
+    const cum = []; let run = 0;
+    for (let w = 0; w < weekly.length; w++) { run += weekly[w] || 0; cum[w] = run; }
+    if (cum.length - 1 > maxWeek) maxWeek = cum.length - 1;
+    series[s.label] = cum;
+  }
+  return { seasons: seasons.map((s) => s.label), series, maxWeek };
+}
+
 /**
  * Simple YoY seasonal projection for a target year: for each week, take the
  * prior year's same-week value and scale by the blended growth rate observed in

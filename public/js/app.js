@@ -3,10 +3,12 @@
 // ============================================================
 import { CONFIG } from "./config.js";
 import { loadData } from "./data.js";
-import { fmtMoney, fmtNum, fmtMoneyShort, ymdToInput, inputToYmd, ymdToDisplay } from "./format.js";
+import { fmtMoney, fmtNum, fmtMoneyShort, fmtNumShort, ymdToInput, inputToYmd, ymdToDisplay } from "./format.js";
 import { filterRows, kpis, breakdownBy, weekOfYear, linearWeeks, projectYoY,
-         rankStyles, rankSkus, styleColors, styleSeasons } from "./compute.js";
-import { renderBreakdown, renderWeekOfYear, renderLinear, renderProjection } from "./charts.js";
+         rankStyles, rankSkus, styleColors, styleSeasons,
+         seasonMatrix, sourceBySeason, seasonPace } from "./compute.js";
+import { renderBreakdown, renderWeekOfYear, renderLinear, renderProjection,
+         renderStackedBar, renderPace } from "./charts.js";
 
 // palette for the ranking color-code (brand tones + high-contrast, ~20 distinct)
 const RANK_PALETTE = CONFIG.SERIES.concat(CONFIG.LINE_SERIES);
@@ -23,8 +25,16 @@ const state = {
   projYear: null,               // target year for projection
   rank: { level: "style", sortKey: "amt", dir: -1, colorDim: "collection",
           search: "", expanded: new Set() },
+  heatDim: "category",          // row dimension for the season heatmap
 };
 let curRows = [];   // last filtered row set (for drill-down expansion)
+
+// dimensions offered as heatmap rows
+const HEAT_DIMS = [
+  { key: "category", label: "Category" }, { key: "color", label: "Color" },
+  { key: "subcategory", label: "Subcategory" }, { key: "collection", label: "Collection" },
+  { key: "division", label: "Product Division" },
+];
 CONFIG.FILTER_DIMS.forEach((d) => (state.filters[d.key] = new Set()));
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -45,6 +55,7 @@ async function init() {
   buildDateRanges();
   buildProjectionYears();
   buildRankControls();
+  buildHeatControls();
   render();
 }
 
@@ -368,26 +379,53 @@ function renderTable(rows) {
     (bySku ? "" : " · click a style name to see its colors");
 }
 
-/** Build the indented color sub-rows shown when a style is expanded. */
+/** Full-width drill-down panel: season trend + color breakdown for one style. */
 function expandRows(x, nCols) {
-  const metricKey = state.metric === "qty" ? "qty" : "amt";
-  const colors = styleColors(DATA, curRows, x.nameIdx).sort((a, b) => b[metricKey] - a[metricKey]);
-  const total = x[metricKey] || 1;
-  return colors.map((c) => {
-    const tr = document.createElement("tr");
-    tr.className = "rank__sub";
-    const share = ((c[metricKey] / total) * 100).toFixed(0);
-    tr.innerHTML =
-      `<td></td>` +
-      `<td class="rank__l" colspan="4"><span class="rank__subname">${esc(c.color)}</span>` +
-      `<span class="rank__submeta">${c.skus} SKU${c.skus > 1 ? "s" : ""}${c.seasons > 1 ? ` · ${c.seasons} seasons` : ""}</span></td>` +
-      `<td class="rank__val">${share}%</td>` +
-      `<td class="rank__val">${fmtNum(c.qty)}</td>` +
-      `<td class="rank__val">${fmtMoney(c.amt)}</td>` +
-      `<td></td>`;
-    return tr;
+  const mk = state.metric === "qty" ? "qty" : "amt";
+  const fmt = state.metric === "qty" ? fmtNum : fmtMoney;
+
+  // seasons (chronological), with % change vs the previous season in the list
+  const seasons = styleSeasons(DATA, curRows, x.nameIdx)
+    .sort((a, b) => { const ka = seasonKey(a.season), kb = seasonKey(b.season); return ka[0] - kb[0] || ka[1] - kb[1]; });
+  const smax = Math.max(1, ...seasons.map((s) => s[mk]));
+  let seasonHtml = "";
+  seasons.forEach((s, i) => {
+    const prev = i > 0 ? seasons[i - 1][mk] : null;
+    const chg = prev ? ((s[mk] - prev) / prev) * 100 : null;
+    const chgTxt = chg == null ? "" :
+      `<span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "▲" : "▼"}${Math.abs(chg).toFixed(0)}%</span>`;
+    seasonHtml +=
+      `<div class="dd__bar"><span class="dd__lab">${esc(s.season)}</span>` +
+      `<span class="dd__track"><span class="dd__fill" style="width:${((s[mk] / smax) * 100).toFixed(1)}%"></span></span>` +
+      `<span class="dd__val">${fmt(s[mk])}</span><span class="dd__chg">${chgTxt}</span></div>`;
   });
+
+  // colors, ranked
+  const colors = styleColors(DATA, curRows, x.nameIdx).sort((a, b) => b[mk] - a[mk]);
+  const cmax = Math.max(1, ...colors.map((c) => c[mk]));
+  let colorHtml = "";
+  colors.forEach((c) => {
+    colorHtml +=
+      `<div class="dd__bar"><span class="dd__lab">${esc(c.color)}</span>` +
+      `<span class="dd__track"><span class="dd__fill dd__fill--sand" style="width:${((c[mk] / cmax) * 100).toFixed(1)}%"></span></span>` +
+      `<span class="dd__val">${fmt(c[mk])}</span>` +
+      `<span class="dd__chg">${c.skus} SKU${c.skus > 1 ? "s" : ""}</span></div>`;
+  });
+
+  const tr = document.createElement("tr");
+  tr.className = "rank__panel";
+  tr.innerHTML =
+    `<td></td><td colspan="${nCols - 1}"><div class="dd">` +
+    `<div class="dd__col"><div class="dd__h">Across seasons ${seasons.length > 1 ? "— growth signal for projecting" : ""}</div>${seasonHtml || '<div class="dd__empty">one season in view</div>'}</div>` +
+    `<div class="dd__col"><div class="dd__h">By color</div>${colorHtml}</div>` +
+    `</div></td>`;
+  return [tr];
 }
+const seasonKey = (label) => {
+  const R = { SPRING: 1, SUMMER: 2, FALL: 3, WINTER: 4, HOLIDAY: 5 };
+  const m = /([A-Z]+)\s*(\d{4})/.exec(String(label).toUpperCase());
+  return m ? [parseInt(m[2], 10), R[m[1]] || 8] : [9999, 9];
+};
 
 function toggleExpand(nameIdx) {
   const e = state.rank.expanded;
@@ -471,6 +509,52 @@ function render() {
   } else {
     projBox.style.display = "none";
   }
+
+  const pace = seasonPace(DATA, rows, state.metric);
+  renderPace("chart-pace", pace, state.metric);
+  const srcmix = sourceBySeason(DATA, rows, state.metric);
+  renderStackedBar("chart-source", srcmix.seasons, srcmix.bySource, state.metric);
+  renderHeatmap(rows);
+}
+
+// ---------- season heatmap ----------
+function buildHeatControls() {
+  const sel = $("#heatDim");
+  if (!sel) return;
+  HEAT_DIMS.forEach((d) => sel.append(new Option(d.label, d.key)));
+  sel.value = state.heatDim;
+  sel.addEventListener("change", () => { state.heatDim = sel.value; renderHeatmap(curRows); });
+}
+
+function renderHeatmap(rows) {
+  const box = $("#heatmap");
+  if (!box) return;
+  const m = seasonMatrix(DATA, rows, state.heatDim, state.metric, 20);
+  const fmt = state.metric === "qty" ? fmtNum : fmtMoney;
+  const short = state.metric === "qty" ? fmtNumShort : fmtMoneyShort;
+  // deep-sea -> light scale
+  const shade = (v) => {
+    if (!v || !m.max) return "transparent";
+    const t = Math.pow(v / m.max, 0.55);           // gamma so small values still show
+    const a = 0.08 + t * 0.85;
+    return `rgba(67,87,94,${a.toFixed(3)})`;
+  };
+  const txtColor = (v) => (v / m.max > 0.55 ? "#fff" : "var(--graphite)");
+  let html = '<table class="heat"><thead><tr><th class="heat__row"></th>';
+  m.seasons.forEach((s) => (html += `<th>${esc(s)}</th>`));
+  html += "</tr></thead><tbody>";
+  m.rowLabels.forEach((label, ri) => {
+    html += `<tr><td class="heat__row" title="${esc(label)}">${esc(label)}</td>`;
+    m.cells[ri].forEach((v) => {
+      html += `<td style="background:${shade(v)};color:${txtColor(v)}" title="${esc(label)} · ${fmt(v)}">${v ? short(v) : ""}</td>`;
+    });
+    html += "</tr>";
+  });
+  html += "</tbody></table>";
+  box.innerHTML = html;
+  $("#heatFoot").textContent =
+    `${HEAT_DIMS.find((d) => d.key === state.heatDim).label} × season · ${state.metric === "qty" ? "units" : "booked $"}` +
+    (m.truncated ? ` · top 20 of ${fmtNum(m.totalRows)} rows` : "");
 }
 
 function resetAll() {

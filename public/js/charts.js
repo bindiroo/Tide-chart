@@ -108,6 +108,63 @@ export function renderLinear(id, points, metric) {
   });
 }
 
+/** Stacked bar: source composition per season. */
+export function renderStackedBar(id, labels, datasets, metric) {
+  const ff = fullFmt(metric);
+  mount(id, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: datasets.map((d) => ({
+        label: d.label, data: d.data,
+        backgroundColor: CONFIG.SOURCE_COLORS[d.label] || CONFIG.COLORS.midTone,
+        borderRadius: 3, maxBarThickness: 48,
+      })),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "top" },
+        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${ff(c.parsed.y)}` } },
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, ticks: { callback: axisFmt(metric) }, grid: { color: "#EDECED" }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+/** Cumulative pace lines, one per season, x = weeks since first order. */
+export function renderPace(id, pace, metric) {
+  const ff = fullFmt(metric);
+  const labels = Array.from({ length: pace.maxWeek + 1 }, (_, i) => "wk " + i);
+  const datasets = pace.seasons.map((s, i) => ({
+    label: s,
+    data: Array.from({ length: pace.maxWeek + 1 }, (_, w) =>
+      pace.series[s][w] != null ? pace.series[s][w] : (w < pace.series[s].length ? 0 : null)),
+    borderColor: CONFIG.LINE_SERIES[i % CONFIG.LINE_SERIES.length],
+    backgroundColor: CONFIG.LINE_SERIES[i % CONFIG.LINE_SERIES.length],
+    borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.2, spanGaps: false,
+  }));
+  mount(id, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "top" },
+        tooltip: { callbacks: { title: (items) => "Booking week " + items[0].dataIndex,
+          label: (c) => c.parsed.y == null ? null : `${c.dataset.label}: ${ff(c.parsed.y)}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, title: { display: true, text: "weeks since the season's first order", color: "#8FA8AE", font: { size: 10 } } },
+        y: { ticks: { callback: axisFmt(metric) }, grid: { color: "#EDECED" }, beginAtZero: true },
+      },
+    },
+  });
+}
+
 /** Week-of-year for two years + projection overlay. */
 export function renderProjection(id, proj, metric) {
   const ff = fullFmt(metric);
