@@ -28,10 +28,14 @@ button,input,select { font-family:inherit; }
   background:var(--deep-sea); color:var(--cloud); padding:12px 20px;
   position:sticky; top:0; z-index:20;
 }
-.topbar__brand { display:flex; align-items:baseline; gap:14px; }
-.topbar__mark { font-family:"Nunito"; font-weight:900; letter-spacing:1.5px; font-size:22px; color:#fff; }
+.topbar__brand { display:flex; align-items:center; gap:12px; }
+.topbar__logo { height:34px; width:34px; display:block; }
+.topbar__mark { font-family:"Nunito"; font-weight:900; letter-spacing:2px; font-size:22px; color:#fff; }
+.topbar__divider { width:1px; height:24px; background:rgba(246,247,247,.3); }
+.topbar__product { font-family:"Nunito"; font-weight:800; letter-spacing:1.5px; font-size:20px; color:var(--mid-tone); }
 .topbar__tag { font-family:"Nunito"; font-weight:800; font-size:11px; letter-spacing:.08em;
-  text-transform:uppercase; color:var(--mid-tone); border-left:1px solid rgba(246,247,247,.25); padding-left:14px; }
+  text-transform:uppercase; color:var(--mid-tone); border-left:1px solid rgba(246,247,247,.25); padding-left:14px; align-self:center; }
+@media (max-width:640px) { .topbar__tag { display:none; } }
 .topbar__meta { display:flex; align-items:center; gap:14px; }
 .topbar__updated { font-size:12px; color:var(--mid-tone); }
 
