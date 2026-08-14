@@ -1,6 +1,6 @@
 /*** ============================================================
  * Ingest.gs — the scheduled weekly job.
- *   1. Find the newest "WHSL Weekly Product Export" email + its CSV attachment
+ *   1. Find the newest "WHSL Tide Chart" email + its CSV attachment
  *   2. Parse + normalize (mirrors tools/build_data.py exactly)
  *   3. Build the compact dashboard JSON and cache it (chunked) in the Meta tab
  *

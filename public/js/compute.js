@@ -111,6 +111,53 @@ export function linearWeeks(rows, metric, basis, yearsFilter = null) {
 }
 
 /**
+ * Rank the filtered rows into product STYLES (grouped by style name / Description).
+ * Each style row carries summed units/dollars, distinct color & sku counts, the
+ * dominant value of each attribute (for display + color-coding), and the full set
+ * of attribute indices present (for the "filter dashboard to this style" pivot).
+ */
+const RANK_DIMS = ["collection", "category", "division", "subcategory"];
+export function rankStyles(data, rows) {
+  const map = new Map();                       // nameIdx -> aggregate
+  for (const r of rows) {
+    const nk = r[I.name];
+    let a = map.get(nk);
+    if (!a) {
+      a = { nameIdx: nk, qty: 0, amt: 0, colors: new Set(), skus: new Set(), dim: {} };
+      for (const dk of RANK_DIMS) a.dim[dk] = new Map();   // valueIdx -> amt weight
+      map.set(nk, a);
+    }
+    a.qty += r[I.qty]; a.amt += r[I.amt];
+    a.colors.add(r[I.color]); a.skus.add(r[I.style]);
+    for (const dk of RANK_DIMS) {
+      const v = r[I[dk]], m = a.dim[dk];
+      m.set(v, (m.get(v) || 0) + r[I.amt]);
+    }
+  }
+  const dominant = (m) => { let bk = -1, bv = -Infinity; for (const [k, v] of m) if (v > bv) { bv = v; bk = k; } return bk; };
+  const out = [];
+  for (const a of map.values()) {
+    const dom = {}, present = {};
+    for (const dk of RANK_DIMS) {
+      dom[dk] = dominant(a.dim[dk]);
+      present[dk] = [...a.dim[dk].keys()];
+    }
+    out.push({
+      name: data.dims.name[a.nameIdx] || "(unnamed)",
+      nameIdx: a.nameIdx,
+      qty: a.qty, amt: a.amt,
+      colors: a.colors.size, skus: a.skus.size,
+      collection: data.dims.collection[dom.collection] || "",
+      category: data.dims.category[dom.category] || "",
+      division: data.dims.division[dom.division] || "",
+      subcategory: data.dims.subcategory[dom.subcategory] || "",
+      dom, present,                        // dom.<dk> = idx (for color key); present for pivot
+    });
+  }
+  return out;
+}
+
+/**
  * Simple YoY seasonal projection for a target year: for each week, take the
  * prior year's same-week value and scale by the blended growth rate observed in
  * weeks that BOTH years already have. Only projects weeks the target year has

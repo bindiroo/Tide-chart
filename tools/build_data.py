@@ -26,6 +26,8 @@ C_ORDER_DATE = "Date"        # when the order was placed
 C_SHIP_DATE  = "Date Start"  # ship / start-ship date
 C_QTY        = "Qty less Cxl"
 C_AMT        = "Amount less Cxl"
+C_STYLE      = "Style"        # SKU-ish style code (e.g. S24GARW-M11001BLU)
+C_DESC       = "Description"  # product / style name (e.g. Garwood Shirt)
 DIM_COLS = OrderedDict([
     ("category",    "Category"),
     ("collection",  "Collection"),
@@ -81,17 +83,24 @@ def norm_division(v):
     v = v.strip()
     return DIVISION_FIX.get(v.lower(), v) if v else ""
 
+def norm_season(v):
+    # order seasons like "SUMMER 2024"; uppercase + collapse spaces to merge case dupes
+    return " ".join(v.upper().split()) if v and v.strip() else ""
+
 def norm_generic(v):
     return v.strip()
 
-NORMALIZERS = {"collection": norm_collection, "division": norm_division}
+NORMALIZERS = {"collection": norm_collection, "division": norm_division,
+               "season": norm_season}
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "WHSL Weekly product Export New.csv"
     out = sys.argv[2] if len(sys.argv) > 2 else "public/data/tide-data.json"
 
-    dims = {k: [] for k in DIM_COLS}          # label lists (dictionary)
-    dim_index = {k: {} for k in DIM_COLS}     # label -> idx
+    # dimension dicts + two extra encoded strings (name/style) for the ranking table
+    EXTRA = ["name", "style"]
+    dims = {k: [] for k in list(DIM_COLS) + EXTRA}   # label lists (dictionary)
+    dim_index = {k: {} for k in dims}                # label -> idx
     def idx_for(dim, label):
         if label not in dim_index[dim]:
             dim_index[dim][label] = len(dims[dim])
@@ -119,11 +128,14 @@ def main():
                 dim_idx.append(idx_for(key, label))
             qty = parse_int(r.get(C_QTY, ""))
             amt = parse_money(r.get(C_AMT, ""))
-            # row: [cat,col,sea,div,sub,src,color, oYYYYMMDD,oYear,oWeek, sYYYYMMDD,sYear,sWeek, qty, amt]
+            name_i = idx_for("name", (r.get(C_DESC, "") or "").strip())
+            style_i = idx_for("style", style)
+            # row: [cat,col,sea,div,sub,src,color, oYYYYMMDD,oYear,oWeek,
+            #       sYYYYMMDD,sYear,sWeek, qty, amt, name, style]
             rows.append(dim_idx + [
                 od[0] if od else 0, od[1] if od else 0, od[2] if od else 0,
                 sd[0] if sd else 0, sd[1] if sd else 0, sd[2] if sd else 0,
-                qty, amt,
+                qty, amt, name_i, style_i,
             ])
             n_kept += 1
 
@@ -148,7 +160,7 @@ def main():
             # field layout so the frontend never hard-codes magic indices
             "fields": ["category","collection","season","division","subcategory",
                        "source","color","oDate","oYear","oWeek","sDate","sYear",
-                       "sWeek","qty","amt"],
+                       "sWeek","qty","amt","name","style"],
         },
         "dims": dims,
         "rows": rows,

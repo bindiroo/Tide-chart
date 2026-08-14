@@ -14,7 +14,16 @@ export const CONFIG = {
   // Field layout is authoritative in meta.fields; these mirror it for readability.
   IDX: { category:0, collection:1, season:2, division:3, subcategory:4, source:5,
          color:6, oDate:7, oYear:8, oWeek:9, sDate:10, sYear:11, sWeek:12,
-         qty:13, amt:14 },
+         qty:13, amt:14, name:15, style:16 },
+
+  // Dimensions offered as the ranking table's color-code (what the swatches mean).
+  COLORCODE_DIMS: [
+    { key: "collection",  label: "Collection" },
+    { key: "category",    label: "Category" },
+    { key: "division",    label: "Product Division" },
+    { key: "subcategory", label: "Subcategory" },
+    { key: "name",        label: "Style name" },
+  ],
 
   // Which dimensions get a filter group, in display order. (color is high-card,
   // shown last / collapsed.)

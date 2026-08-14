@@ -23,6 +23,7 @@ var DIVISION_FIX_ = { 'acccessories': 'Accessories' };
 
 function normCollection_(v) { v = (v || '').trim(); if (!v) return ''; var u = v.toUpperCase(); return COLLECTION_FIX_[u] || u; }
 function normDivision_(v)  { v = (v || '').trim(); if (!v) return ''; return DIVISION_FIX_[v.toLowerCase()] || v; }
+function normSeason_(v)    { v = (v || '').trim(); return v ? v.toUpperCase().split(/\s+/).join(' ') : ''; }
 function normGeneric_(v)   { return (v || '').trim(); }
 
 function parseMoney_(s) {
@@ -78,12 +79,16 @@ function buildPayload_(csvRows, sourceName) {
   }
   var C = CONFIG.COLS;
   var iStyle = need(C.style), iOd = need(C.orderDate), iSd = need(C.shipDate),
-      iQty = need(C.qty), iAmt = need(C.amt);
+      iQty = need(C.qty), iAmt = need(C.amt), iDesc = need(C.description);
   var dimIdxCols = DIM_ORDER_.map(function (p) { return need(C[p[0]]); });
-  var normalizers = { collection: normCollection_, division: normDivision_ };
+  var normalizers = { collection: normCollection_, division: normDivision_,
+                      season: normSeason_ };
 
+  // dimension dicts + two extra encoded strings (name/style) for the ranking table
+  var EXTRA = ['name', 'style'];
   var dims = {}, dimIndex = {};
   DIM_ORDER_.forEach(function (p) { dims[p[0]] = []; dimIndex[p[0]] = {}; });
+  EXTRA.forEach(function (k) { dims[k] = []; dimIndex[k] = {}; });
   function idxFor(dimKey, label) {
     var idx = dimIndex[dimKey];
     if (!(label in idx)) { idx[label] = dims[dimKey].length; dims[dimKey].push(label); }
@@ -108,10 +113,12 @@ function buildPayload_(csvRows, sourceName) {
       var norm = (normalizers[key] || normGeneric_)(raw);
       enc.push(idxFor(key, norm));
     }
+    var nameI = idxFor('name', (row[iDesc] || '').trim());
+    var styleI = idxFor('style', style);
     rows.push(enc.concat([
       od ? od.ymd : 0, od ? od.y : 0, od ? od.w : 0,
       sd ? sd.ymd : 0, sd ? sd.y : 0, sd ? sd.w : 0,
-      parseIntSafe_(row[iQty]), parseMoney_(row[iAmt]),
+      parseIntSafe_(row[iQty]), parseMoney_(row[iAmt]), nameI, styleI,
     ]));
     nKept++;
   }
@@ -138,7 +145,7 @@ function buildPayload_(csvRows, sourceName) {
       orderYears: sortNums(oYears), shipYears: sortNums(sYears),
       fields: ['category', 'collection', 'season', 'division', 'subcategory',
                'source', 'color', 'oDate', 'oYear', 'oWeek', 'sDate', 'sYear',
-               'sWeek', 'qty', 'amt'],
+               'sWeek', 'qty', 'amt', 'name', 'style'],
     },
     dims: dims,
     rows: rows,

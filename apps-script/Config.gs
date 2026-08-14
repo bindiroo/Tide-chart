@@ -13,8 +13,8 @@ const CONFIG = {
   // SENDER is optional: leave '' to match on subject alone (most robust if you're
   // unsure of the exact From address). Set it to e.g. 'apparelmagic.com' to
   // narrow the search once you've confirmed the sender via debugInbox().
-  SUBJECT: 'WHSL Weekly Product Export',
-  SENDER: '',                 // '' = any sender; or 'apparelmagic.com'
+  SUBJECT: 'WHSL Tide Chart',
+  SENDER: 'apparelmagic.com', // '' = any sender; narrowed to the ApparelMagic domain
   LOOKBACK_DAYS: 10,          // window to find the newest matching email (covers a missed Monday)
 
   // Sheet tab names.
@@ -31,6 +31,7 @@ const CONFIG = {
     qty:       'Qty less Cxl',
     amt:       'Amount less Cxl',
     style:     'Style',           // blank on subtotal rows -> dropped
+    description: 'Description',    // product / style name (e.g. Garwood Shirt)
     // dimensions (frontend order): category, collection, season, division, subcategory, source, color
     category:    'Category',
     collection:  'Collection',

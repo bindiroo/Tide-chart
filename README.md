@@ -71,7 +71,7 @@ recomputes instantly.
 ## Architecture (target, mirrors Jetty Central)
 
 ```
-Gmail (Apparel Magic, "WHSL Weekly Product Export NEW", Mon 6am)
+Gmail (Apparel Magic, "WHSL Tide Chart", Mon 6am)
    │  1 CSV attachment
    ▼  [SCHEDULED Mon ~6:15am]  Google Apps Script: ingestWeekly()
         parse → normalize → dictionary-encode → cache JSON
