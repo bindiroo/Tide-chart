@@ -11,6 +11,23 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <!-- password gate (light access wall) -->
+  <div id="gate" class="gate">
+    <form id="gateForm" class="gate__card">
+      <img class="gate__logo" src="assets/jetty-badge-white.png" alt="Jetty" />
+      <div class="gate__mark">TIDE CHART</div>
+      <div class="gate__sub">Product · Seasonality · Trends</div>
+      <input id="gatePass" class="gate__input" type="password" placeholder="Password" autocomplete="current-password" />
+      <button class="gate__btn" type="submit">Enter</button>
+      <div id="gateErr" class="gate__err" role="alert"></div>
+      <div class="gate__foot">Jetty · Draw Your Own Line.®</div>
+    </form>
+  </div>
+  <script>
+    // Instant un-gate for already-authenticated visitors (no flash of the wall).
+    try { if (localStorage.getItem("tide_gate_ok_v1")) document.getElementById("gate").style.display = "none"; } catch (e) {}
+  </script>
+
   <header class="topbar">
     <div class="topbar__brand">
       <img class="topbar__logo" src="assets/jetty-badge-white.png" alt="Jetty" />
@@ -178,6 +195,7 @@
     </main>
   </div>
 
+  <script type="module" src="js/gate.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

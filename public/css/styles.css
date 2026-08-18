@@ -22,6 +22,33 @@ body {
 h1,h2,h3,h4 { font-family:"Nunito",system-ui,Arial,sans-serif; font-weight:800; margin:0; }
 button,input,select { font-family:inherit; }
 
+/* ---------- password gate ---------- */
+.gate {
+  position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg,#43575E 0%,#354449 60%,#252933 100%); padding:20px;
+}
+.gate__card {
+  width:100%; max-width:340px; background:rgba(255,255,255,.06); border:1px solid rgba(246,247,247,.16);
+  border-radius:14px; padding:34px 28px 24px; text-align:center; backdrop-filter:blur(4px);
+  box-shadow:0 20px 50px rgba(0,0,0,.35);
+}
+.gate__logo { height:52px; width:52px; display:block; margin:0 auto 14px; }
+.gate__mark { font-family:"Nunito"; font-weight:900; letter-spacing:2.5px; font-size:24px; color:#fff; }
+.gate__sub { font-family:"Nunito"; font-weight:800; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--mid-tone); margin-top:5px; margin-bottom:22px; }
+.gate__input {
+  width:100%; padding:11px 13px; border:1px solid rgba(246,247,247,.22); border-radius:8px;
+  background:rgba(255,255,255,.95); color:var(--graphite); font-size:15px; text-align:center;
+}
+.gate__input:focus { outline:none; border-color:var(--mid-tone); box-shadow:0 0 0 3px rgba(143,168,174,.3); }
+.gate__btn {
+  width:100%; margin-top:12px; padding:11px; border:none; border-radius:8px; cursor:pointer;
+  background:var(--sage); color:#fff; font-family:"Nunito"; font-weight:800; font-size:14px; letter-spacing:.04em;
+}
+.gate__btn:hover { background:#4e6b5c; }
+.gate__err { color:#ffd7d1; font-size:12.5px; min-height:16px; margin-top:12px; }
+.gate__foot { color:var(--mid-tone); font-size:11px; margin-top:16px; }
+
 /* ---------- topbar ---------- */
 .topbar {
   display:flex; align-items:center; justify-content:space-between;
