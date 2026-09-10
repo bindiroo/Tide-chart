@@ -56,6 +56,8 @@ async function init() {
   buildProjectionYears();
   buildRankControls();
   buildHeatControls();
+  buildStyleIndex();
+  buildFind();
   render();
 }
 
@@ -190,6 +192,80 @@ function buildProjectionYears() {
   state.projYear = candidates[candidates.length - 1];
   sel.value = state.projYear;
   sel.onchange = () => { state.projYear = +sel.value; render(); };
+}
+
+// ---------- find a style (top typeahead) ----------
+let styleIndex = [];   // [{ nameIdx, name, lname, amt, qty, collIdx }]
+function buildStyleIndex() {
+  if (DATA.meta.fields.indexOf("name") === -1) return;
+  const I = CONFIG.IDX;
+  const byName = new Map();
+  for (const r of DATA.rows) {
+    const nk = r[I.name];
+    let a = byName.get(nk);
+    if (!a) { a = { nameIdx: nk, amt: 0, qty: 0, coll: new Map() }; byName.set(nk, a); }
+    a.amt += r[I.amt]; a.qty += r[I.qty];
+    a.coll.set(r[I.collection], (a.coll.get(r[I.collection]) || 0) + r[I.amt]);
+  }
+  styleIndex = [...byName.values()].map((a) => {
+    let bk = -1, bv = -Infinity; for (const [k, v] of a.coll) if (v > bv) { bv = v; bk = k; }
+    return { nameIdx: a.nameIdx, name: DATA.dims.name[a.nameIdx] || "(unnamed)",
+             lname: (DATA.dims.name[a.nameIdx] || "").toLowerCase(), amt: a.amt, qty: a.qty, collIdx: bk };
+  });
+}
+
+function buildFind() {
+  const input = $("#findInput"), box = $("#findResults");
+  if (!input || !styleIndex.length) { const f = document.querySelector(".find"); if (f && !styleIndex.length) f.style.display = "none"; return; }
+  let current = [], active = -1;
+
+  const close = () => { box.hidden = true; box.innerHTML = ""; active = -1; };
+  const paint = () => box.querySelectorAll(".find__opt").forEach((el, i) =>
+    el.classList.toggle("find__opt--active", i === active));
+  const move = (d) => { if (!current.length) return; active = (active + d + current.length) % current.length; paint(); };
+
+  const open = () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) return close();
+    current = styleIndex.filter((s) => s.lname.includes(q))
+      .sort((a, b) => (Number(b.lname.startsWith(q)) - Number(a.lname.startsWith(q))) || (b.amt - a.amt))
+      .slice(0, 8);
+    if (!current.length) { box.innerHTML = `<div class="find__none">No style matches “${esc(q)}”</div>`; box.hidden = false; return; }
+    box.innerHTML = current.map((s, i) =>
+      `<div class="find__opt${i === 0 ? " find__opt--active" : ""}" data-i="${i}">` +
+      `<span class="sw" style="background:${RANK_PALETTE[(s.collIdx + 1) % RANK_PALETTE.length]}"></span>` +
+      `<span class="fo__name">${esc(s.name)}</span>` +
+      `<span class="fo__meta">${fmtMoney(s.amt)} · ${fmtNum(s.qty)} u</span></div>`).join("");
+    active = 0; box.hidden = false;
+    box.querySelectorAll(".find__opt").forEach((el) =>
+      el.addEventListener("mousedown", (e) => { e.preventDefault(); pick(+el.dataset.i); }));
+  };
+
+  const pick = (i) => {
+    const s = current[i]; if (!s) return;
+    input.value = s.name; close();
+    // jump to the ranking table: style mode, filtered + expanded to this style
+    state.rank.level = "style";
+    document.querySelectorAll("#rankLevel button").forEach((b) =>
+      b.classList.toggle("seg__btn--on", b.dataset.val === "style"));
+    buildRankHead();
+    state.rank.search = s.lname;
+    const rs = $("#rankSearch"); if (rs) rs.value = s.name;
+    state.rank.expanded = new Set([s.nameIdx]);
+    render();
+    document.getElementById("rankCard").scrollIntoView({ block: "start" });
+  };
+
+  input.addEventListener("input", open);
+  input.addEventListener("focus", () => { if (input.value.trim()) open(); });
+  input.addEventListener("keydown", (e) => {
+    if (box.hidden) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+    else if (e.key === "Enter") { e.preventDefault(); pick(active); }
+    else if (e.key === "Escape") { close(); }
+  });
+  input.addEventListener("blur", () => setTimeout(close, 150));
 }
 
 // ---------- style ranking table ----------
