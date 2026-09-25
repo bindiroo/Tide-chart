@@ -28,3 +28,25 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# ============================================================
+# RETIRED — this site now forwards to the Tide Chart's new home.
+#
+# The Tide Chart moved inside The Lineup's deployment, where its data sits
+# behind the same sign-in as every other Jetty tool. This site was serving two
+# things it should not have been: its Apps Script read key, published in
+# js/config.js, and a 2 MB snapshot of style-level sell-in at /data, which
+# anyone could fetch without signing in.
+#
+# The key has been rotated, so it no longer opens anything. The snapshot has
+# been moved out of public/ and into _retired/. This catch-all sends every
+# remaining address — including anything still bookmarked — to the new home.
+#
+# force = true matters: without it Netlify serves a real file when one exists,
+# and the point here is that nothing on this site should be served at all.
+# ============================================================
+[[redirects]]
+  from = "/*"
+  to = "https://jetty-the-lineup.netlify.app/tide-chart/"
+  status = 301
+  force = true
